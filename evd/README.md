@@ -160,3 +160,32 @@ Tests cover:
 - `StudyModal` — renders studies, closes on click/Escape
 - `ErrorBoundary` — catches errors, shows retry
 - `EvidenceGapMap` — grid renders, cells clickable, empty cells disabled
+
+## Future Improvements
+
+With more time, the following would strengthen the solution:
+
+### Data Layer
+- **API integration** — connect to OpenAlex/PubMed for real study data instead of mock data
+- **Server-side pagination** — handle large datasets without loading all studies into memory
+- **Caching layer** — cache API responses to avoid redundant requests
+- **Search indexing** — add full-text search across study titles, authors, and journals
+
+### UX
+- **Keyboard navigation** — arrow keys to move between cells, Enter to open modal
+- **Tooltip on hover** — preview study count before clicking
+- **Export to CSV/PDF** — let users download the visible grid or filtered results
+- **Dark mode** — follow system preference with manual toggle
+- **Animations** — smooth transitions when filtering rows/columns
+
+### Code Quality
+- **TypeScript** — add type safety across components, hooks, and data models
+- **E2E tests** — add Playwright tests for full user flows (filter → click cell → read modal → close)
+- **Visual regression tests** — screenshot comparison in Storybook to catch UI drift
+- **Storybook interaction tests** — automate user interactions in Storybook stories
+- **Error monitoring** — integrate Sentry or similar for production error tracking
+
+### Infrastructure
+- **Preview deployments** — Vercel preview URLs on every PR for stakeholder review
+- **Lighthouse CI** — automated performance, accessibility, and SEO scoring in CI
+- **Branch protection** — require PR reviews and passing CI before merge to `main`
