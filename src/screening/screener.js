@@ -1,12 +1,20 @@
-import { ABSTRACTS, REVIEW_QUESTION } from './dataset.js'
+import { REVIEW_QUESTION } from './dataset.js'
 
-export function createMockScreener({ accuracy = 0.8, seed = 42 } = {}) {
-  const decisions = ABSTRACTS.map(a => a.expected)
+export function createMockScreener({ accuracy = 0.8, seed = 42, dataset } = {}) {
+  if (!dataset || dataset.length === 0) {
+    throw new Error('createMockScreener requires a non-empty dataset')
+  }
+
+  const decisions = dataset.map(a => a.expected)
   const rng = mulberry32(seed)
   const errors = decisions.map(() => rng() < 1 - accuracy)
 
   return async function mockScreener(abstract) {
-    const idx = ABSTRACTS.findIndex(a => a.id === abstract.id)
+    assertAbstract(abstract)
+    const idx = dataset.findIndex(a => a.id === abstract.id)
+    if (idx === -1) {
+      return { id: abstract.id, predicted: 'exclude', confidence: 0.5 }
+    }
     const correct = decisions[idx]
     const flip = errors[idx]
 
@@ -36,8 +44,15 @@ export function createOpenAICompatibleScreener({ apiKey, baseUrl, model, prompt 
   if (!apiKey) {
     throw new Error('API key is required. Set the appropriate environment variable.')
   }
+  if (!baseUrl) {
+    throw new Error('baseUrl is required.')
+  }
+  if (!model) {
+    throw new Error('model is required.')
+  }
 
   return async function screener(abstract) {
+    assertAbstract(abstract)
     const systemPrompt = prompt || DEFAULT_SYSTEM_PROMPT
 
     const response = await fetchWithRetry(`${baseUrl}/chat/completions`, {
@@ -87,10 +102,19 @@ export function createMistralScreener({ apiKey, model = 'mistral-large-latest', 
   })
 }
 
+function assertAbstract(abstract) {
+  if (!abstract || typeof abstract !== 'object') {
+    throw new Error('Screener received invalid abstract: expected an object')
+  }
+  if (typeof abstract.id !== 'number') {
+    throw new Error('Screener received abstract without a numeric id')
+  }
+}
+
 function mulberry32(a) {
   return function () {
     a |= 0; a = a + 0x6D2B79F5 | 0
-    var t = Math.imul(a ^ a >>> 15, 1 | a)
+    let t = Math.imul(a ^ a >>> 15, 1 | a)
     t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t
     return ((t ^ t >>> 14) >>> 0) / 4294967296
   }
@@ -100,7 +124,7 @@ export function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-async function fetchWithRetry(url, options, maxRetries = 5) {
+export async function fetchWithRetry(url, options, maxRetries = 5) {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const response = await fetch(url, options)
     if (response.ok) return response

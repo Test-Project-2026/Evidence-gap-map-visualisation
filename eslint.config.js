@@ -18,4 +18,10 @@ export default defineConfig([
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
   },
+  {
+    files: ['src/screening/run.js', 'src/screening/evaluate.test.js'],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
 ])

@@ -1,7 +1,7 @@
-import { describe, it, before, after } from 'node:test'
+import { describe, it, before } from 'node:test'
 import assert from 'node:assert/strict'
 import { ABSTRACTS } from './dataset.js'
-import { computeMetrics, formatReport, formatConfusionMatrixForTest } from './evaluate.js'
+import { computeMetrics, formatReport } from './evaluate.js'
 import { createMockScreener } from './screener.js'
 
 async function evaluateScreener(screenerFn, dataset = ABSTRACTS) {
@@ -151,7 +151,7 @@ describe('Mock Screener', () => {
   let results
 
   before(async () => {
-    screener = createMockScreener({ accuracy: 0.8, seed: 42 })
+    screener = createMockScreener({ accuracy: 0.8, seed: 42, dataset: ABSTRACTS })
     results = await evaluateScreener(screener)
   })
 
@@ -182,8 +182,8 @@ describe('Mock Screener', () => {
 
 describe('Screener Swappability', () => {
   it('should produce different results with different accuracy settings', async () => {
-    const lowAcc = createMockScreener({ accuracy: 0.5, seed: 99 })
-    const highAcc = createMockScreener({ accuracy: 1.0, seed: 99 })
+    const lowAcc = createMockScreener({ accuracy: 0.5, seed: 99, dataset: ABSTRACTS })
+    const highAcc = createMockScreener({ accuracy: 1.0, seed: 99, dataset: ABSTRACTS })
     const lowResults = await evaluateScreener(lowAcc)
     const highResults = await evaluateScreener(highAcc)
     const lowMetrics = computeMetrics(lowResults)
@@ -209,30 +209,28 @@ describe('End-to-End Evaluation', () => {
   let results
 
   before(async () => {
-    const screener = createMockScreener({ accuracy: 0.8, seed: 42 })
+    const screener = createMockScreener({ accuracy: 0.8, seed: 42, dataset: ABSTRACTS })
     results = await evaluateScreener(screener)
     metrics = computeMetrics(results)
   })
 
-  it('should print the evaluation report', () => {
-    const report = formatReport(
-      `Screening Evaluation: Mock Screener (accuracy=0.8)`,
-      metrics,
-      results,
-      true
-    )
-    console.log(report)
+  it('should produce non-zero metrics across all dimensions', () => {
+    assert.ok(metrics.tp > 0, 'expected true positives')
+    assert.ok(metrics.tn > 0, 'expected true negatives')
+    assert.ok(metrics.accuracy > 0.5, `expected accuracy > 50%, got ${metrics.accuracy}`)
+    assert.ok(metrics.precision > 0.5, `expected precision > 50%, got ${metrics.precision}`)
+    assert.ok(metrics.recall > 0.5, `expected recall > 50%, got ${metrics.recall}`)
+    assert.ok(metrics.f1 > 0.5, `expected f1 > 50%, got ${metrics.f1}`)
   })
 
-  it('should compute results that match formatConfusionMatrixForTest', () => {
-    const flat = formatConfusionMatrixForTest(metrics)
-    assert.strictEqual(flat.tp, metrics.tp)
-    assert.strictEqual(flat.fp, metrics.fp)
-    assert.strictEqual(flat.fn, metrics.fn)
-    assert.strictEqual(flat.tn, metrics.tn)
-    assert.strictEqual(flat.precision, metrics.precision)
-    assert.strictEqual(flat.recall, metrics.recall)
-    assert.strictEqual(flat.f1, metrics.f1)
-    assert.strictEqual(flat.accuracy, metrics.accuracy)
+  it('should count total items equal to dataset length', () => {
+    const total = metrics.tp + metrics.fp + metrics.fn + metrics.tn
+    assert.strictEqual(total, ABSTRACTS.length)
+  })
+
+  it('should format a report without throwing', () => {
+    const report = formatReport('Test', metrics, results, true)
+    assert.ok(report.includes('Accuracy'))
+    assert.ok(report.includes('Confusion Matrix'))
   })
 })

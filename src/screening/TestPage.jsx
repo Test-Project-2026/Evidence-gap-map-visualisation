@@ -30,7 +30,7 @@ export default function TestPage() {
     setResults(null)
 
     const seed = Date.now()
-    const screener = createMockScreener({ accuracy, seed })
+    const screener = createMockScreener({ accuracy, seed, dataset: ABSTRACTS })
     const items = []
 
     for (const abstract of ABSTRACTS) {

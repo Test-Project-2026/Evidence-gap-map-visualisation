@@ -1,54 +1,65 @@
 import { ABSTRACTS } from './dataset.js'
 import { computeMetrics, formatReport } from './evaluate.js'
-import { createMockScreener, createOpenAIScreener, createMistralScreener } from './screener.js'
-import { sleep } from './screener.js'
+import { createMockScreener, createOpenAIScreener, createMistralScreener, sleep } from './screener.js'
 
-async function main() {
-  const mode = process.argv[2] || 'mock'
-  let screener
-  let label
+function usage() {
+  console.error(`Usage:
+  node run.js mock [accuracy] [seed] [delayMs]
+  node run.js openai [delayMs]
+  node run.js mistral [delayMs]`)
+  process.exit(1)
+}
+
+function envOrExit(name) {
+  const val = process.env[name]
+  if (!val) {
+    console.error(`Set ${name} environment variable.`)
+    process.exit(1)
+  }
+  return val
+}
+
+function parseArgs(argv) {
+  const mode = argv[2] || 'mock'
+  let screener, label, delayMs
 
   switch (mode) {
     case 'mock': {
-      const accuracy = parseFloat(process.argv[3]) || 0.8
-      const seed = parseInt(process.argv[4]) || 42
-      screener = createMockScreener({ accuracy, seed })
+      const accuracy = parseFloat(argv[3]) || 0.8
+      const seed = parseInt(argv[4]) || 42
+      screener = createMockScreener({ accuracy, seed, dataset: ABSTRACTS })
       label = `Mock Screener (accuracy=${accuracy}, seed=${seed})`
+      delayMs = parseInt(argv[5]) || 2000
       break
     }
     case 'openai': {
-      const apiKey = process.env.OPENAI_API_KEY
-      if (!apiKey) {
-        console.error('Set OPENAI_API_KEY environment variable to use OpenAI.')
-        process.exit(1)
-      }
       screener = createOpenAIScreener({
-        apiKey,
+        apiKey: envOrExit('OPENAI_API_KEY'),
         model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
       })
       label = `OpenAI Screener (${process.env.OPENAI_MODEL || 'gpt-4o-mini'})`
+      delayMs = parseInt(argv[3]) || 2000
       break
     }
     case 'mistral': {
-      const apiKey = process.env.MISTRAL_API_KEY
-      if (!apiKey) {
-        console.error('Set MISTRAL_API_KEY environment variable to use Mistral.')
-        process.exit(1)
-      }
       screener = createMistralScreener({
-        apiKey,
+        apiKey: envOrExit('MISTRAL_API_KEY'),
         model: process.env.MISTRAL_MODEL || 'mistral-large-latest',
       })
       label = `Mistral Screener (${process.env.MISTRAL_MODEL || 'mistral-large-latest'})`
+      delayMs = parseInt(argv[3]) || 2000
       break
     }
     default: {
-      console.error(`Unknown mode: ${mode}. Use 'mock', 'openai', or 'mistral'.`)
-      process.exit(1)
+      usage()
     }
   }
 
-  const delayMs = parseInt(process.argv[3]) || 2000
+  return { screener, label, delayMs }
+}
+
+async function main() {
+  const { screener, label, delayMs } = parseArgs(process.argv)
   console.log(`\n  Evaluating: ${label}`)
   console.log(`  Abstracts:  ${ABSTRACTS.length}`)
   console.log(`  Delay:      ${delayMs}ms between requests`)
